@@ -383,7 +383,7 @@ matches = db.get_matches_for_resume(resume_id)
 
 ## License
 
-MIT License - see LICENSE file for details
+![MIT License](LICENSE)
 
 ## Acknowledgments
 
