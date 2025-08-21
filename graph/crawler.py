@@ -15,7 +15,14 @@ class BulkJobsCrawler:
     """Crawler that expands all jobs then returns all content at once"""
     
     def __init__(self, headless: bool = True, data_dir: str = "data/jobs"):
-        self.headless = headless
+        import os
+        # Force headless mode in containers
+        is_container = os.path.exists('/.dockerenv') or os.environ.get('KUBERNETES_SERVICE_HOST')
+        if is_container:
+            print("Container environment detected - forcing headless mode")
+            self.headless = True
+        else:
+            self.headless = headless
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
         
@@ -75,27 +82,93 @@ class BulkJobsCrawler:
         """Actual crawling logic with improved error handling"""
         browser = None
         try:
+            # Detect if running in container
+            import os
+            is_container = os.path.exists('/.dockerenv') or os.environ.get('KUBERNETES_SERVICE_HOST')
+            
+            # Build browser args with container-specific options
+            browser_args = [
+                '--disable-blink-features=AutomationControlled',
+                '--disable-dev-shm-usage',
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--window-size=1920,1080',
+                '--disable-gpu',  # Help with stability
+                '--disable-web-security',
+                '--disable-features=IsolateOrigins,site-per-process',
+                '--disable-accelerated-2d-canvas',
+                '--disable-dev-tools',
+                '--disable-translate',
+                '--metrics-recording-only',
+                '--no-first-run',
+                '--safebrowsing-disable-auto-update',
+                '--disable-sync',
+                '--disable-features=VizDisplayCompositor'
+            ]
+            
+            # Add container-specific args
+            if is_container:
+                print("Running in container - adding extra browser arguments")
+                browser_args.extend([
+                    '--disable-gpu-sandbox',
+                    '--disable-software-rasterizer',
+                    '--disable-extensions',
+                    '--disable-background-timer-throttling',
+                    '--disable-backgrounding-occluded-windows',
+                    '--disable-renderer-backgrounding',
+                    '--disable-features=TranslateUI',
+                    '--disable-ipc-flooding-protection',
+                    '--no-default-browser-check',
+                    '--no-pings',
+                    '--disable-default-apps',
+                    '--disable-hang-monitor',
+                    '--disable-prompt-on-repost',
+                    '--disable-domain-reliability',
+                    '--disable-component-update',
+                    '--disable-features=AudioServiceOutOfProcess',
+                    '--disable-features=IsolateOrigins',
+                    '--disable-features=site-per-process'
+                ])
+            
             async with async_playwright() as p:
-                browser = await p.chromium.launch(
-                    headless=self.headless,
-                    args=[
-                        '--disable-blink-features=AutomationControlled',
-                        '--disable-dev-shm-usage',
-                        '--no-sandbox',
-                        '--disable-setuid-sandbox',
-                        '--window-size=1920,1080',
-                        '--disable-gpu',  # Help with stability
-                        '--disable-web-security',
-                        '--disable-features=IsolateOrigins,site-per-process'
-                    ]
-                )
+                print(f"Attempting to launch Chromium browser (headless={self.headless})...")
+                print(f"Browser args: {browser_args[:5]}...")  # Print first 5 args
+                
+                try:
+                    browser = await p.chromium.launch(
+                        headless=self.headless,
+                        args=browser_args
+                    )
+                    print("✓ Browser launched successfully")
+                except Exception as launch_error:
+                    print(f"✗ Browser launch failed: {launch_error}")
+                    raise
+                
+                # Use more realistic user agent
+                user_agents = [
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+                    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+                ]
+                import random
                 
                 context = await browser.new_context(
                     viewport={'width': 1920, 'height': 1080},
-                    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    user_agent=random.choice(user_agents),
                     locale='en-US',
                     permissions=[],  # Deny all permissions including geolocation
-                    geolocation=None  # No geolocation
+                    geolocation=None,  # No geolocation
+                    # Add more realistic browser settings
+                    ignore_https_errors=True,
+                    java_script_enabled=True,
+                    bypass_csp=True,
+                    extra_http_headers={
+                        'Accept-Language': 'en-US,en;q=0.9',
+                        'Accept-Encoding': 'gzip, deflate, br',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                        'Connection': 'keep-alive',
+                        'Upgrade-Insecure-Requests': '1'
+                    }
                 )
                 
                 page = await context.new_page()
@@ -114,13 +187,43 @@ class BulkJobsCrawler:
                     query = f"{query} jobs"
                 search_term = f"{query} {location}".strip()
                 encoded_query = quote_plus(search_term)
-                # Add location parameter to URL to preempt location prompt
-                location_param = f"&near={quote_plus(location)}" if location else ""
-                url = f"https://www.google.com/search?q={encoded_query}&hl=en{location_param}"
+                
+                # Try multiple URL formats - Google Jobs can be accessed different ways
+                # Start with the simplest format and try alternatives if needed
+                url_formats = [
+                    # Format 1: Direct jobs search with embedded location
+                    f"https://www.google.com/search?q={encoded_query}&ibp=htl;jobs",
+                    # Format 2: Alternative jobs parameter format  
+                    f"https://www.google.com/search?q={encoded_query}&hl=en&gl=us&ibp=htl;jobs",
+                    # Format 3: Standard search that should show Jobs tab
+                    f"https://www.google.com/search?q={encoded_query}",
+                ]
+                
+                # Try first URL format
+                url = url_formats[0]
                 
                 print(f"Searching for: {search_term}")
-                await page.goto(url, wait_until='domcontentloaded')  # Faster than networkidle
-                await asyncio.sleep(0.3)  # Further optimized
+                print(f"URL: {url}")
+                print("Navigating to Google Jobs...")
+                
+                # Navigate with timeout handling
+                try:
+                    response = await page.goto(url, wait_until='domcontentloaded', timeout=30000)
+                    print(f"✓ Navigation complete, status: {response.status if response else 'no response'}")
+                except Exception as nav_error:
+                    print(f"✗ Navigation failed: {nav_error}")
+                    # Continue anyway - page might have partially loaded
+                
+                await asyncio.sleep(1)  # Give more time for initial load in container
+                
+                # Debug: Check page title and URL
+                try:
+                    current_url = page.url
+                    title = await page.title()
+                    print(f"Current URL: {current_url}")
+                    print(f"Page title: {title}")
+                except Exception as e:
+                    print(f"Could not get page info: {e}")
                 
                 # Check for and handle location prompts/modals
                 try:
@@ -173,33 +276,107 @@ class BulkJobsCrawler:
                     # Location prompt handling failed, but continue anyway
                     print(f"Note: Could not handle location prompt: {e}")
                 
-                # Click Jobs tab
-                try:
-                    jobs_tab = page.locator("a:has-text('Jobs')").first
-                    if await jobs_tab.is_visible(timeout=1000):  # Reduced from 2000ms
-                        print("Opening Google jobs tab...")
-                        await jobs_tab.click()
-                        await asyncio.sleep(0.5)  # Further optimized
-                except:
-                    jobs_url = url.replace("/search?", "/search?ibp=htl;jobs&")
-                    await page.goto(jobs_url, wait_until='domcontentloaded')  # Faster
-                    await asyncio.sleep(0.3)  # Further optimized
+                # Since we're using direct Jobs URL, no need to click the tab
+                # Just wait a bit for the page to fully load
+                await asyncio.sleep(0.5)
                 
-                # Find all job cards - use the correct selector
-                working_selector = 'div.EimVGf'
-                cards = await page.query_selector_all(working_selector)
+                # Wait for job cards to load and find them
+                print("Waiting for job cards to load...")
                 
-                if not cards:
-                    # Fallback to other selectors
-                    for selector in ['li.iFjolb', 'div.PwjeAc', 'div[role="listitem"]']:
+                # Try multiple selectors with wait
+                selectors_to_try = [
+                    'div.EimVGf',
+                    'li.iFjolb', 
+                    'div.PwjeAc',
+                    'div[role="listitem"]',
+                    'div[jsname="QwynGc"]',  # Another Google Jobs selector
+                    'div.gws-plugins-horizon-jobs__li-ed',  # Alternative selector
+                    'div[data-ved]'  # Generic Google result selector
+                ]
+                
+                working_selector = None
+                cards = []
+                
+                # Try to wait for any of the selectors
+                for selector in selectors_to_try:
+                    try:
+                        # Wait up to 3 seconds for the selector to appear
+                        await page.wait_for_selector(selector, timeout=3000)
                         cards = await page.query_selector_all(selector)
-                        if cards:
+                        if cards and len(cards) > 0:
                             working_selector = selector
+                            print(f"Found {len(cards)} potential job cards with selector: {selector}")
                             break
+                    except:
+                        continue
                 
                 if not cards:
-                    print("No job cards found")
-                    return {'error': 'No jobs found'}
+                    # Debug: print page content to understand structure
+                    print("No job cards found with standard selectors")
+                    
+                    # Try alternative approach - click on Jobs tab if not active
+                    try:
+                        # Look for Jobs tab button
+                        jobs_tab_selectors = [
+                            'a[aria-label="Jobs"]',
+                            'div[aria-label="Jobs"]',
+                            'span:has-text("Jobs")',
+                            'text="Jobs"',
+                            'a[href*="ibp=htl;jobs"]',
+                            'div[data-hveid]:has-text("Jobs")'
+                        ]
+                        
+                        for selector in jobs_tab_selectors:
+                            try:
+                                jobs_tab = page.locator(selector).first
+                                if await jobs_tab.is_visible(timeout=1000):
+                                    print(f"Found Jobs tab with selector: {selector}, clicking...")
+                                    await jobs_tab.click()
+                                    await asyncio.sleep(2)  # Wait for jobs to load
+                                    
+                                    # Try to find job cards again
+                                    for sel in selectors_to_try:
+                                        cards = await page.query_selector_all(sel)
+                                        if cards and len(cards) > 0:
+                                            working_selector = sel
+                                            print(f"After clicking Jobs tab, found {len(cards)} cards with: {sel}")
+                                            break
+                                    
+                                    if cards:
+                                        break
+                            except:
+                                continue
+                    except Exception as e:
+                        print(f"Could not click Jobs tab: {e}")
+                    
+                    # If still no cards, try to understand what's on the page
+                    if not cards:
+                        # Get page text to debug
+                        try:
+                            page_text = await page.text_content('body')
+                            if page_text:
+                                # Check if we're blocked or challenged
+                                if 'unusual traffic' in page_text.lower() or 'captcha' in page_text.lower():
+                                    print("WARNING: Google may be blocking automated requests")
+                                    return {'error': 'Google blocking detected - may need to wait or use different approach'}
+                                
+                                # Check if no results
+                                if 'no results found' in page_text.lower() or 'did not match any' in page_text.lower():
+                                    print("No job results found for this query")
+                                    return {'error': 'No job results for this search query'}
+                                
+                                print(f"Page content preview (first 300 chars): {page_text[:300]}...")
+                        except:
+                            pass
+                        
+                        # Take a screenshot for debugging (in container)
+                        try:
+                            await page.screenshot(path='/tmp/debug_no_jobs.png')
+                            print("Debug screenshot saved to /tmp/debug_no_jobs.png")
+                        except:
+                            pass
+                        
+                        return {'error': 'No jobs found - Jobs tab may not be loading properly'}
                 
                 print(f"Found {len(cards)} job cards using selector: {working_selector}")
                 

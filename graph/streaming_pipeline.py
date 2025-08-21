@@ -338,20 +338,25 @@ class StreamingPipeline:
                 self.auto_start_llm = False
         else:
             # Check if existing server is running (expected when run from app.py)
+            import os
+            # Get LLM server URL from environment or construct from host/port
+            llm_host = os.getenv("LLM_SERVER_HOST", "localhost")
+            llm_port = os.getenv("LLM_SERVER_PORT", "8000")
+            base_url = os.getenv("OPENAI_BASE_URL", f"http://{llm_host}:{llm_port}/v1")
+            
             try:
                 import requests
-                response = requests.get('http://localhost:8000/v1/models', timeout=2)
+                response = requests.get(f"{base_url}/models", timeout=2)
                 if response.status_code == 200:
-                    logger.info("Connected to existing LLM server at http://localhost:8000/v1")
+                    logger.info(f"Connected to existing LLM server at {base_url}")
                 else:
                     logger.warning("LLM server not responding properly, LLM features may be unavailable")
             except Exception as e:
                 logger.warning(f"Could not connect to LLM server: {e}")
         
         # Pass config to ensure all components use the same LLM settings
-        import os
         llm_config = {
-            'llm_base_url': os.getenv("OPENAI_BASE_URL", 'http://localhost:8000/v1'),
+            'llm_base_url': base_url,
             'llm_model': os.getenv("LLM_MODEL", 'qwen3-4b-instruct-2507-f16')
         }
         

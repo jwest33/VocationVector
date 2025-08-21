@@ -11,6 +11,7 @@ services:
       - ./config:/app/config
     environment:
       - APP_ENVIRONMENT=${APP_ENVIRONMENT:-production}
+      - SETTINGS_FILE=config/settings_docker.json
       - LLM_SERVER_HOST=llm-server
       - LLM_SERVER_PORT=8000
       - LLM_MODE=remote  # Tell app to use remote server
@@ -21,7 +22,8 @@ services:
       - PYTHONUNBUFFERED=1
       - LLM_STARTUP_TIMEOUT=300  # Increase timeout to 5 minutes for model loading
     depends_on:
-      - llm-server
+      llm-server:
+        condition: service_healthy
     networks:
       - vocationvector-net
     restart: unless-stopped
@@ -37,10 +39,11 @@ services:
       "--model", "/models/Qwen3-4B-Instruct-2507-F16.gguf",
       "--host", "0.0.0.0",
       "--port", "8000",
-      "--ctx-size", "${LLM_CTX_SIZE:-32768}",
+      "--ctx-size", "${LLM_CTX_SIZE:-10000}",
       "--threads", "${LLM_N_THREADS:-4}",
-      "--n-gpu-layers", "${LLM_N_GPU_LAYERS:-99}",  # Offload all layers to GPU
-      "--alias", "qwen3-4b-instruct-2507-f16"
+      "--n-gpu-layers", "${LLM_N_GPU_LAYERS:-35}",
+      "--alias", "qwen3-4b-instruct-2507-f16",
+      "--n-predict", "5000"
     ]
     networks:
       - vocationvector-net
@@ -48,9 +51,9 @@ services:
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 300s
+      timeout: 10s
+      retries: 60
+      start_period: 600s
     deploy:
       resources:
         limits:

@@ -84,7 +84,10 @@ class PipelineConfig:
     
     # LLM settings
     llm_model: str = os.getenv("LLM_MODEL", "qwen3-4b-instruct-2507-f16")
-    llm_base_url: str = os.getenv("OPENAI_BASE_URL", "http://localhost:8000/v1")
+    # Get LLM server URL from environment or construct from host/port
+    _llm_host: str = os.getenv("LLM_SERVER_HOST", "localhost")
+    _llm_port: str = os.getenv("LLM_SERVER_PORT", "8000")
+    llm_base_url: str = os.getenv("OPENAI_BASE_URL", f"http://{_llm_host}:{_llm_port}/v1")
     llm_timeout: int = 240
     
     # Server management

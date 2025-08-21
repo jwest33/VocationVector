@@ -59,7 +59,7 @@ class LLMSettings:
     llm_name: str = "qwen3-4b-instruct-2507-f16"
     host: str = "0.0.0.0"
     port: int = 8000
-    base_url: str = field(default_factory=lambda: os.getenv("OPENAI_BASE_URL", "http://localhost:8000/v1"))
+    base_url: str = field(default_factory=lambda: os.getenv("OPENAI_BASE_URL", f"http://{os.getenv('LLM_SERVER_HOST', 'localhost')}:{os.getenv('LLM_SERVER_PORT', '8000')}/v1"))
     auto_start_server: bool = True
     stop_server_on_complete: bool = False
     server_startup_timeout: int = 60
