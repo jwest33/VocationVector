@@ -50,7 +50,9 @@ class StreamingCrawler(BulkJobsCrawler):
             from playwright.async_api import async_playwright
             from urllib.parse import quote_plus
             
+            logger.info("Starting Playwright browser...")
             async with async_playwright() as p:
+                logger.info(f"Launching Chromium in {'headless' if self.headless else 'headful'} mode...")
                 browser = await p.chromium.launch(
                     headless=self.headless,
                     args=[
@@ -61,6 +63,7 @@ class StreamingCrawler(BulkJobsCrawler):
                         '--window-size=1920,1080',
                     ]
                 )
+                logger.info("Browser launched successfully")
                 
                 context = await browser.new_context(
                     viewport={'width': 1920, 'height': 1080},
@@ -306,7 +309,10 @@ class StreamingCrawler(BulkJobsCrawler):
                         continue
                         
         except Exception as e:
-            logger.error(f"Crawler error: {e}")
+            logger.error(f"Crawler error: {e}", exc_info=True)
+            import traceback
+            traceback.print_exc()
+            raise
         finally:
             if browser:
                 await browser.close()
