@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Data (will be mounted as volumes)
+data/jobs/
+data/resumes/
+data/lancedb/
+data/uploads/
+data/pipeline_output/
+data/.cache/
+data/preferences.json
+data/llm_tracking.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+docs/
+
+# Tests
+tests/
+test_*.py
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Environment files (contain secrets)
+.env
+.env.*
+
+# Models (too large)
+models/
+*.gguf

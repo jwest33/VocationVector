@@ -1,0 +1,486 @@
+{% extends "base.html" %}
+
+{% block content %}
+<!-- Tab Navigation - Floating toolbar -->
+<div class="sticky top-20 z-40 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
+    <div class="flex flex-wrap items-center gap-2 rounded-2xl bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 px-3 py-3 border border-gray-200/80 shadow-lg shadow-gray-200/40">
+        <button class="tab-btn px-4 py-2 rounded-xl text-sm font-medium transition-all border active" data-tab="upload">
+            Resumes
+        </button>
+        <button class="tab-btn px-4 py-2 rounded-xl text-sm font-medium transition-all border" data-tab="preferences">
+            Preferences
+        </button>
+        <button class="tab-btn px-4 py-2 rounded-xl text-sm font-medium transition-all border" data-tab="search">
+            Job Search
+        </button>
+        <button class="tab-btn px-4 py-2 rounded-xl text-sm font-medium transition-all border" data-tab="matches">
+            Matches
+        </button>
+        <button class="tab-btn px-4 py-2 rounded-xl text-sm font-medium transition-all border" data-tab="analytics">
+            Analytics
+        </button>
+        <div class="flex-1"></div>
+        <button onclick="exportMatches()" class="tab-btn px-4 py-2 rounded-xl text-sm font-medium transition-all border">Export CSV</button>
+    </div>
+</div>
+
+<!-- Tab Content -->
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-6 pt-6 mt-1">
+    <!-- Upload Resumes Tab -->
+    <div id="upload-tab" class="tab-content active" style="display: block;">
+        <div class="space-y-6">
+            <!-- Upload and Status Section -->
+            <div class="bg-white rounded-2xl p-4 border space-y-4 shadow-lg shadow-gray-200/40">
+                <!-- Upload Area -->
+                <div class="border-2 border-dashed border-blue-300 rounded-xl p-4 text-center bg-blue-50/50 hover:border-blue-400 hover:bg-blue-50 transition-colors" id="dropZone">
+                    <div class="mx-auto w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 border border-blue-200 flex items-center justify-center text-xl">📄</div>
+                    <h4 class="mt-2 text-xs font-semibold text-gray-900">Drop resumes here or browse</h4>
+                    <p class="text-xs text-gray-500">PDF, DOCX, TXT files accepted</p>
+                    <div class="mt-2">
+                        <input type="file" id="fileInput" class="hidden" accept=".pdf,.docx,.txt" multiple onchange="handleFileSelect(event)">
+                        <button id="browseBtn" type="button"
+                                class="px-3 py-1.5 text-xs rounded-lg bg-white border border-blue-300 hover:bg-blue-50 text-blue-700 transition-colors font-medium">
+                            Browse Files
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Processing Status -->
+                <div class="border-t pt-4">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <span class="text-sm font-medium text-gray-700">Processing Status: </span>
+                            <span id="uploadStatus" class="text-sm text-gray-600">No files processing</span>
+                        </div>
+                        <div id="uploadProgress" class="hidden">
+                            <span class="text-sm text-blue-600 font-medium">Processing...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Processed Resumes List -->
+            <div class="overflow-hidden bg-white rounded-2xl shadow-lg shadow-gray-200/40">
+                <div class="p-3 border-b flex items-center gap-3 text-sm">
+                    <h3 class="text-base font-semibold text-gray-900 flex-1">Processed Resumes</h3>
+                    <input id="resumeFilter" class="rounded-lg border px-3 py-2 w-64" 
+                           placeholder="Filter by name or skill...">
+                </div>
+                <div class="p-4">
+                    <div id="resumesList" class="grid sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        <!-- Resumes will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preferences Tab -->
+    <div id="preferences-tab" class="tab-content hidden">
+        <div class="space-y-6">
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div class="border rounded-2xl p-4 bg-white shadow-lg shadow-gray-200/40">
+                    <label class="text-xs text-gray-500">Preferred Titles</label>
+                    <input id="prefTitles" type="text" placeholder="e.g., Data Engineer, ML Engineer" 
+                           class="mt-1 w-full text-sm rounded-lg border px-2 py-1">
+                </div>
+                <div class="border rounded-2xl p-4 bg-white shadow-lg shadow-gray-200/40">
+                    <label class="text-xs text-gray-500">Locations</label>
+                    <input id="prefLocations" type="text" placeholder="e.g., Remote, Denver CO" 
+                           class="mt-1 w-full text-sm rounded-lg border px-2 py-1">
+                </div>
+                <div class="border rounded-2xl p-4 bg-white shadow-lg shadow-gray-200/40">
+                    <label class="text-xs text-gray-500">Salary Range (USD)</label>
+                    <div class="mt-1 flex gap-2">
+                        <input id="prefMinSalary" type="number" placeholder="Min" 
+                               class="w-full text-sm rounded-lg border px-2 py-1">
+                        <input id="prefMaxSalary" type="number" placeholder="Max" 
+                               class="w-full text-sm rounded-lg border px-2 py-1">
+                    </div>
+                </div>
+                <div class="border rounded-2xl p-4 bg-white shadow-lg shadow-gray-200/40">
+                    <label class="text-xs text-gray-500">Work Type</label>
+                    <select id="prefWorkType" class="mt-1 w-full text-sm rounded-lg border px-2 py-1">
+                        <option value="full-time">Full-time</option>
+                        <option value="contract">Contract</option>
+                        <option value="part-time">Part-time</option>
+                    </select>
+                </div>
+                <div class="border rounded-2xl p-4 bg-white shadow-lg shadow-gray-200/40">
+                    <label class="text-xs text-gray-500">Preferred Domains</label>
+                    <input id="prefDomains" type="text" placeholder="e.g., Healthcare, AI, Climate" 
+                           class="mt-1 w-full text-sm rounded-lg border px-2 py-1">
+                </div>
+            </div>
+
+            <div class="grid lg:grid-cols-3 gap-3">
+                <div class="lg:col-span-2 border rounded-2xl p-4 bg-white">
+                    <h3 class="text-base font-semibold text-gray-900 mb-3">Scoring Weights</h3>
+                    <p class="text-sm text-gray-500 mb-3">Adjust the contribution of each signal to the match score.</p>
+                    <div class="grid sm:grid-cols-2 gap-4 text-sm">
+                        <label class="p-3 rounded-xl border flex items-center justify-between">
+                            <span class="text-gray-700">Skills Match</span>
+                            <span class="flex items-center gap-3">
+                                <input id="weightSkills" type="range" min="0" max="100" value="40" class="w-40" style="accent-color: #1e3a8a;">
+                                <span class="w-10 text-right text-gray-600"><span class="weight-value">40</span>%</span>
+                            </span>
+                        </label>
+                        <label class="p-3 rounded-xl border flex items-center justify-between">
+                            <span class="text-gray-700">Experience Level</span>
+                            <span class="flex items-center gap-3">
+                                <input id="weightExperience" type="range" min="0" max="100" value="20" class="w-40" style="accent-color: #1e3a8a;">
+                                <span class="w-10 text-right text-gray-600"><span class="weight-value">20</span>%</span>
+                            </span>
+                        </label>
+                        <label class="p-3 rounded-xl border flex items-center justify-between">
+                            <span class="text-gray-700">Location Fit</span>
+                            <span class="flex items-center gap-3">
+                                <input id="weightLocation" type="range" min="0" max="100" value="15" class="w-40" style="accent-color: #1e3a8a;">
+                                <span class="w-10 text-right text-gray-600"><span class="weight-value">15</span>%</span>
+                            </span>
+                        </label>
+                        <label class="p-3 rounded-xl border flex items-center justify-between">
+                            <span class="text-gray-700">Domain Relevance</span>
+                            <span class="flex items-center gap-3">
+                                <input id="weightDomain" type="range" min="0" max="100" value="15" class="w-40" style="accent-color: #1e3a8a;">
+                                <span class="w-10 text-right text-gray-600"><span class="weight-value">15</span>%</span>
+                            </span>
+                        </label>
+                        <label class="p-3 rounded-xl border flex items-center justify-between">
+                            <span class="text-gray-700">Compensation Fit</span>
+                            <span class="flex items-center gap-3">
+                                <input id="weightCompensation" type="range" min="0" max="100" value="10" class="w-40" style="accent-color: #1e3a8a;">
+                                <span class="w-10 text-right text-gray-600"><span class="weight-value">10</span>%</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+                <div class="border rounded-2xl p-4 bg-white shadow-lg shadow-gray-200/40">
+                    <h3 class="text-base font-semibold text-gray-900 mb-3">Actions</h3>
+                    <div class="space-y-2">
+                        <button onclick="savePreferences()" 
+                                class="w-full px-3 py-2 text-sm rounded-xl text-white hover:opacity-90 transition-opacity shadow-sm"
+                                style="background: linear-gradient(to right, #1e3a8a, #1e40af);">
+                            Save Preferences
+                        </button>
+                        <button onclick="loadPreferences()" 
+                                class="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 hover:bg-gray-50">
+                            Reload Defaults
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Job Search Tab -->
+    <div id="search-tab" class="tab-content hidden">
+        <div class="space-y-6">
+            <div class="grid lg:grid-cols-3 gap-3">
+                <div class="lg:col-span-2 border rounded-2xl p-4 bg-white">
+                    <div class="grid md:grid-cols-2 gap-3 text-sm">
+                        <input id="searchQuery" class="rounded-xl border px-3 py-2" placeholder="Keywords e.g. 'data engineer'">
+                        <input id="searchLocation" class="rounded-xl border px-3 py-2" placeholder="Location e.g. Remote or Denver, CO">
+                    </div>
+                    <div class="mt-3 grid md:grid-cols-2 gap-3 text-sm">
+                        <input id="searchMaxJobs" type="number" value="20" min="1" max="50" 
+                               class="rounded-xl border px-3 py-2" placeholder="Max jobs to fetch (default: 20)">
+                        <label class="inline-flex items-center gap-2 text-gray-700">
+                            <input id="searchRemoteOk" type="checkbox" class="w-4 h-4" checked> Include Remote
+                        </label>
+                    </div>
+                    <div class="mt-4 flex items-center gap-2">
+                        <button onclick="startJobSearch()" 
+                                class="px-3 py-2 text-sm rounded-xl text-white hover:opacity-90 transition-opacity shadow-sm"
+                                style="background: linear-gradient(to right, #1e3a8a, #1e40af);">
+                            Run Search
+                        </button>
+                    </div>
+                </div>
+                <div class="border rounded-2xl p-4 bg-white shadow-lg shadow-gray-200/40">
+                    <h3 class="text-base font-semibold text-gray-900 mb-3">Search Status</h3>
+                    <div id="searchStatus" class="space-y-2 text-sm text-gray-700">
+                        <p>Ready to search</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="overflow-hidden bg-white rounded-2xl shadow-lg shadow-gray-200/40">
+                <div class="p-3 border-b">
+                    <h3 class="text-base font-semibold text-gray-900">Found Jobs</h3>
+                </div>
+                <ul id="jobsList" class="divide-y">
+                    <!-- Jobs will be loaded here -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Matches Tab -->
+    <div id="matches-tab" class="tab-content">
+        <div class="space-y-6">
+            <!-- Filter Controls and Run Matching -->
+            <div class="bg-white rounded-2xl p-4 border space-y-4 shadow-lg shadow-gray-200/40">
+                <!-- Run Matching Button -->
+                <div class="mt-4 flex items-center gap-2">
+                    <button onclick="runMatching()" 
+                            class="px-3 py-2 text-sm rounded-xl text-white hover:opacity-90 transition-opacity shadow-sm"
+                            style="background: linear-gradient(to right, #1e3a8a, #1e40af);">
+                        Run Matching
+                    </button>
+                </div>
+                
+                <!-- Match Score Filter -->
+                <div class="border-t pt-4">
+                    <label class="text-sm font-medium text-gray-700">
+                        Minimum Match Score: <span id="minScoreValue" class="font-semibold text-blue-600">30%</span>
+                    </label>
+                    <input type="range" id="minScoreSlider" min="0" max="100" value="30" 
+                           class="w-full mt-2" style="accent-color: #1e3a8a;">
+                    <div class="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>0%</span>
+                        <span>25%</span>
+                        <span>50%</span>
+                        <span>75%</span>
+                        <span>100%</span>
+                    </div>
+                </div>
+                
+                <!-- Resume Visibility Controls -->
+                <div>
+                    <label class="text-sm font-medium text-gray-700 mb-2 block">
+                        Show Matches From:
+                    </label>
+                    <div id="resumeFilters" class="flex flex-wrap gap-2">
+                        <!-- Resume checkboxes will be loaded here -->
+                    </div>
+                </div>
+                
+                <!-- Filter Stats -->
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-gray-600">
+                        Showing <span id="filteredCount" class="font-semibold text-gray-900">0</span> of 
+                        <span id="totalCount" class="font-semibold text-gray-900">0</span> matches
+                    </span>
+                    <button onclick="resetFilters()" class="text-blue-600 hover:text-blue-700 font-medium">
+                        Reset Filters
+                    </button>
+                </div>
+            </div>
+
+            <div id="matchesContent">
+                <div class="overflow-hidden bg-white rounded-2xl shadow-lg shadow-gray-200/40">
+                    <div class="p-3 border-b flex items-center gap-3 text-sm">
+                        <input id="matchFilter" class="rounded-lg border px-3 py-2 flex-1" 
+                               placeholder="Filter by company, skill, or keyword...">
+                        <select id="matchSort" class="rounded-lg border px-2 py-2">
+                            <option value="score">Sort by Score</option>
+                            <option value="date">Sort by Date</option>
+                        </select>
+                    </div>
+                    <ul id="matchesList" class="divide-y">
+                        <!-- Matches will be loaded here -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analytics Tab -->
+    <div id="analytics-tab" class="tab-content hidden">
+        <div class="space-y-6">
+            <!-- Quick Stats -->
+            <div class="grid lg:grid-cols-4 gap-3">
+                <div class="border rounded-2xl p-4 bg-white shadow-lg shadow-gray-200/40">
+                    <div class="text-xs text-gray-500 uppercase tracking-wide">Resumes Parsed</div>
+                    <div class="text-2xl font-bold text-gray-900 mt-1" id="statResumes">0</div>
+                </div>
+                <div class="border rounded-2xl p-4 bg-white shadow-lg shadow-gray-200/40">
+                    <div class="text-xs text-gray-500 uppercase tracking-wide">Jobs Crawled</div>
+                    <div class="text-2xl font-bold text-gray-900 mt-1" id="statJobs">0</div>
+                </div>
+                <div class="border rounded-2xl p-4 bg-white shadow-lg shadow-gray-200/40">
+                    <div class="text-xs text-gray-500 uppercase tracking-wide">Matches Found</div>
+                    <div class="text-2xl font-bold text-gray-900 mt-1" id="statMatches">0</div>
+                </div>
+                <div class="border rounded-2xl p-4 bg-white shadow-lg shadow-gray-200/40">
+                    <div class="text-xs text-gray-500 uppercase tracking-wide">Avg Match Score</div>
+                    <div class="text-2xl font-bold text-gray-900 mt-1"><span id="statAvgScore">0</span>%</div>
+                </div>
+            </div>
+
+            <!-- Analytics Reports Section -->
+            <div class="bg-white rounded-2xl border shadow-lg shadow-gray-200/40 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-900">Analytics Reports</h3>
+                        <p class="text-sm text-gray-600 mt-1">Generate AI-powered insights for your resumes</p>
+                    </div>
+                    <button onclick="showResumeSelectionModal()" id="generateReportBtn"
+                            class="px-4 py-2 text-sm font-medium rounded-xl text-white hover:opacity-90 transition-all shadow-lg"
+                            style="background: linear-gradient(to right, #1e3a8a, #1e40af);">
+                        <span id="reportBtnText">+ Generate New Report</span>
+                        <span id="reportBtnLoader" class="hidden">
+                            <span class="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></span>
+                            Analyzing...
+                        </span>
+                    </button>
+                </div>
+                
+                <!-- Reports Grid -->
+                <div id="reportsGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    <!-- Report cards will be loaded here -->
+                    <div class="text-center py-8 col-span-full text-gray-500 text-sm">
+                        Loading reports...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Report Section (Hidden by default) -->
+            <div id="analyticsReport" class="hidden space-y-6">
+                <!-- Match Distribution Chart -->
+                <div class="bg-white rounded-2xl border shadow-lg shadow-gray-200/40 p-6">
+                    <h3 class="text-base font-semibold text-gray-900 mb-4">Match Quality Distribution</h3>
+                    <div class="grid grid-cols-4 gap-4">
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-green-600" id="excellentMatches">0</div>
+                            <div class="text-xs text-gray-600 mt-1">Excellent<br/>(80-100%)</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-blue-600" id="goodMatches">0</div>
+                            <div class="text-xs text-gray-600 mt-1">Good<br/>(60-79%)</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-yellow-600" id="fairMatches">0</div>
+                            <div class="text-xs text-gray-600 mt-1">Fair<br/>(40-59%)</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="text-3xl font-bold text-red-600" id="poorMatches">0</div>
+                            <div class="text-xs text-gray-600 mt-1">Poor<br/>(&lt;40%)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Skills Analysis -->
+                <div class="grid lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-2xl border shadow-lg shadow-gray-200/40 p-6">
+                        <h3 class="text-base font-semibold text-gray-900 mb-4">Top In-Demand Skills</h3>
+                        <div id="topDemandedSkills" class="space-y-2">
+                            <!-- Skills will be loaded here -->
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl border shadow-lg shadow-gray-200/40 p-6">
+                        <h3 class="text-base font-semibold text-gray-900 mb-4">Most Common Job Titles</h3>
+                        <div id="topJobTitles" class="space-y-2">
+                            <!-- Job titles will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Skill Gaps and Strengths -->
+                <div class="grid lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-2xl border border-red-200 shadow-lg shadow-gray-200/40 p-6">
+                        <h3 class="text-base font-semibold text-red-700 mb-4">Critical Skill Gaps</h3>
+                        <p class="text-xs text-gray-600 mb-3">Skills in high demand but low supply in resume pool</p>
+                        <div id="skillGaps" class="flex flex-wrap gap-2">
+                            <!-- Gaps will be loaded here -->
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-2xl border border-green-200 shadow-lg shadow-gray-200/40 p-6">
+                        <h3 class="text-base font-semibold text-green-700 mb-4">Resume Strengths</h3>
+                        <p class="text-xs text-gray-600 mb-3">Skills well-represented and aligned with market demand</p>
+                        <div id="skillStrengths" class="flex flex-wrap gap-2">
+                            <!-- Strengths will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Insights -->
+                <div class="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl border border-purple-200 shadow-lg shadow-gray-200/40 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">AI-Generated Insights</h3>
+                    <div id="llmInsights" class="space-y-4">
+                        <!-- LLM insights will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    <!-- Resume Selection Modal -->
+    <div id="resumeSelectionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4 max-h-[80vh] overflow-y-auto">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Select Resume for Analytics</h2>
+            <p class="text-gray-600 mb-4">Choose which resume to analyze. The report will be saved and can be viewed later.</p>
+            
+            <div id="resumeList" class="space-y-2 mb-6">
+                <!-- Resume list will be loaded here -->
+            </div>
+            
+            <div class="flex gap-3">
+                <button onclick="closeResumeSelectionModal()" 
+                        class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button onclick="generateReportForSelectedResume()" id="confirmGenerateBtn"
+                        class="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled>
+                    Generate Report
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Clear Data Modal -->
+    <div id="clearDataModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-6 max-w-md w-full mx-4">
+            <h2 class="text-xl font-semibold text-gray-900 mb-4">Clear Data</h2>
+            <p class="text-gray-600 mb-4">Select which data to clear. This action cannot be undone!</p>
+            
+            <div class="space-y-3 mb-6">
+                <label class="flex items-center">
+                    <input type="checkbox" id="clearJobs" class="mr-2 rounded border-gray-300 text-red-600 focus:ring-red-500" checked>
+                    <span class="text-sm">
+                        <span class="font-medium">Clear Jobs</span>
+                        <span class="text-gray-500 ml-1">(Database and files)</span>
+                    </span>
+                </label>
+                
+                <label class="flex items-center">
+                    <input type="checkbox" id="clearMatches" class="mr-2 rounded border-gray-300 text-red-600 focus:ring-red-500" checked>
+                    <span class="text-sm">
+                        <span class="font-medium">Clear Matches</span>
+                        <span class="text-gray-500 ml-1">(All match results)</span>
+                    </span>
+                </label>
+                
+                <label class="flex items-center">
+                    <input type="checkbox" id="clearResumes" class="mr-2 rounded border-gray-300 text-red-600 focus:ring-red-500">
+                    <span class="text-sm">
+                        <span class="font-medium">Clear Resumes</span>
+                        <span class="text-gray-500 ml-1">(This will delete uploaded resumes!)</span>
+                    </span>
+                </label>
+            </div>
+            
+            <div class="bg-red-50 border border-red-200 rounded-lg p-3 mb-6">
+                <p class="text-sm text-red-800">
+                    <strong>Warning:</strong> This will permanently delete the selected data. 
+                    Make sure you have backups if needed.
+                </p>
+            </div>
+            
+            <div class="flex gap-3">
+                <button onclick="confirmClearData()" 
+                        class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                    Clear Selected Data
+                </button>
+                <button onclick="closeClearDataModal()" 
+                        class="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</main>
+{% endblock %}

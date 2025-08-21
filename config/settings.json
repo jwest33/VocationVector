@@ -1,0 +1,152 @@
+{
+  "default": {
+    "environment": "development",
+    "database": {
+      "db_path": "data/lancedb",
+      "reset_if_exists": false,
+      "auto_recreate_on_schema_error": true,
+      "embedding_batch_size": 64,
+      "max_search_results": 100,
+      "cleanup_days": 30,
+      "enable_versioning": true
+    },
+    "crawler": {
+      "headless": true,
+      "browser_timeout": 30000,
+      "page_load_timeout": 60000,
+      "crawl_delay_seconds": 1.5,
+      "max_retries": 3,
+      "retry_delay_seconds": 2.0,
+      "default_max_jobs": 20,
+      "max_jobs_per_session": 50,
+      "job_card_selector": "div.EimVGf",
+      "show_more_selector": "button[aria-label*='Show full description']"
+    },
+    "llm": {
+      "model_path": "C:\\models\\Qwen3-4B-Instruct-2507\\Qwen3-4B-Instruct-2507-F16.gguf",
+      "llm_name": "qwen3-4b-instruct-2507-f16",
+      "host": "0.0.0.0",
+      "port": 8000,
+      "base_url": "http://localhost:8000/v1",
+      "auto_start_server": true,
+      "stop_server_on_complete": false,
+      "server_startup_timeout": 60,
+      "health_check_interval": 5,
+      "temperature": 0.1,
+      "max_tokens": 500,
+      "timeout": 30,
+      "context_size": 10000,
+      "n_gpu_layers": 35,
+      "threads": 12
+    },
+    "embedding": {
+      "llm_name": "TechWolf/JobBERT-v2",
+      "cache_embeddings": true,
+      "embedding_dimension": 768,
+      "max_sequence_length": 512,
+      "batch_size": 32
+    },
+    "pipeline": {
+      "output_directory": "data/pipeline_output",
+      "resume_directory": "data/resumes",
+      "jobs_directory": "data/jobs",
+      "cache_directory": "data/.cache",
+      "use_llm_matching": true,
+      "use_cache": true,
+      "verbose": false,
+      "save_intermediate_results": true,
+      "top_k_matches": 1000,
+      "min_match_score": 0.3,
+      "parallel_processing": true,
+      "max_workers": 6
+    },
+    "logging": {
+      "level": "INFO",
+      "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+      "file_path": "logs/graph.log",
+      "console_output": true,
+      "log_to_file": false,
+      "max_file_size_mb": 10,
+      "backup_count": 5
+    },
+    "features": {
+      "enable_caching": true,
+      "enable_monitoring": false,
+      "debug_mode": false,
+      "enable_telemetry": false
+    }
+  },
+  "environment_overrides": {
+    "development": {
+      "crawler": {
+        "headless": false,
+        "default_max_jobs": 5
+      },
+      "llm": {
+        "temperature": 0.2,
+        "max_tokens": 5000
+      },
+      "logging": {
+        "level": "DEBUG",
+        "log_to_file": true
+      },
+      "features": {
+        "debug_mode": true
+      }
+    },
+    "testing": {
+      "database": {
+        "db_path": "data/test_lancedb",
+        "reset_if_exists": true
+      },
+      "crawler": {
+        "default_max_jobs": 3
+      },
+      "pipeline": {
+        "output_directory": "data/test_output"
+      },
+      "logging": {
+        "level": "INFO"
+      }
+    },
+    "production": {
+      "crawler": {
+        "headless": true,
+        "crawl_delay_seconds": 2.0,
+        "default_max_jobs": 20
+      },
+      "llm": {
+        "temperature": 0.2,
+        "max_tokens": 5000,
+        "timeout": 180
+      },
+      "logging": {
+        "level": "WARNING",
+        "log_to_file": true,
+        "console_output": false
+      },
+      "features": {
+        "enable_monitoring": true,
+        "debug_mode": false
+      }
+    }
+  },
+  "paths": {
+    "models": {
+      "qwen3_8b": "C:\\models\\Qwen3-4B-Instruct-2507\\Qwen3-4B-Instruct-2507-F16.gguf",
+      "qwen3_4b": "C:\\models\\Qwen3-4B-Instruct-2507\\Qwen3-4B-Instruct-2507-Q8_0.gguf"
+    },
+    "data": {
+      "root": "data",
+      "database": "data/lancedb",
+      "resumes": "data/resumes",
+      "jobs": "data/jobs",
+      "output": "data/pipeline_output",
+      "cache": "data/.cache",
+      "logs": "logs"
+    }
+  },
+  "api_keys": {
+    "comment": "Store sensitive API keys in environment variables or .env file, not here"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "preferred_titles": [
+    "Software Engineer"
+  ],
+  "locations": [
+    "remote"
+  ],
+  "min_salary": 90000,
+  "max_salary": 180000,
+  "work_type": "full-time",
+  "domains": [
+    ""
+  ],
+  "weights": {
+    "skills": 40,
+    "experience": 20,
+    "location": 15,
+    "domain": 15,
+    "compensation": 10
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "embedding_cache": {
+    "enabled": true,
+    "max_size": 10000,
+    "ttl_seconds": 3600
+  },
+  "llm_cache": {
+    "enabled": true,
+    "max_size": 1000,
+    "ttl_seconds": 1800
+  },
+  "job_text_cache": {
+    "enabled": true,
+    "max_size": 500,
+    "ttl_seconds": 7200
+  }
+}

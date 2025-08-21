@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install wheel setuptools
+          pip install pytest pytest-cov pytest-asyncio pytest-mock psutil
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Install Playwright browsers
+        run: |
+          python -m playwright install --with-deps chromium
+
+      - name: Create test configuration
+        run: |
+          mkdir -p config
+          echo '{
+            "environments": {
+              "testing": {
+                "llm": {
+                  "auto_start_server": false,
+                  "model_path": "mock_model.gguf",
+                  "port": 8000
+                },
+                "crawler": {
+                  "headless": true,
+                  "timeout": 30000
+                },
+                "embeddings": {
+                  "model_name": "TechWolf/JobBERT-v2",
+                  "cache_enabled": false
+                },
+                "database": {
+                  "path": "./test_data/lancedb"
+                }
+              }
+            }
+          }' > config/settings.json
+
+      - name: Create test environment file
+        run: |
+          echo "APP_ENVIRONMENT=testing" > .env
+          echo "LLM_MODEL_PATH=mock_model.gguf" >> .env
+
+      - name: Run tests with coverage
+        run: |
+          pytest tests/ -v --cov=graph --cov-report=term-missing
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: htmlcov/

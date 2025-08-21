@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}VocationVector{% endblock %}</title>
+    
+    <!-- Tailwind CSS -->
+    <!-- Note: Using CDN for development. For production, install as PostCSS plugin or use Tailwind CLI -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <style>
+        /* Custom checkbox styling with dark blue gradient */
+        input[type="checkbox"] {
+            accent-color: #1e3a8a;
+        }
+        
+        input[type="checkbox"]:checked {
+            background: linear-gradient(135deg, #1e3a8a, #1e40af);
+        }
+        
+        /* Custom styles for number inputs in salary range */
+        input[type="number"]#prefMinSalary,
+        input[type="number"]#prefMaxSalary {
+            border-color: #1e3a8a;
+        }
+        
+        input[type="number"]#prefMinSalary:focus,
+        input[type="number"]#prefMaxSalary:focus {
+            outline: none;
+            border-color: #1e40af;
+            box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+        }
+    </style>
+
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Cdefs%3E%3ClinearGradient id='grad' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%231e3a8a'/%3E%3Cstop offset='100%25' stop-color='%231e40af'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='36' height='36' rx='10' fill='url(%23grad)'/%3E%3Ctext x='50%25' y='60%25' text-anchor='middle' font-size='18' font-family='sans-serif' font-weight='900' fill='white'%3EVV%3C/text%3E%3C/svg%3E" type="image/svg+xml">
+
+    {% block head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-gray-50 text-gray-900">
+    <!-- Top Bar -->
+    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-gray-200 shadow-md">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-2xl text-white inline-flex items-center justify-center font-black shadow-sm" style="background: linear-gradient(135deg, #1e3a8a, #1e40af);">VV</div>
+                <div class="leading-none">
+                    <div class="text-sm font-semibold">VocationVector</div>
+                    <div class="text-[11px] text-gray-500">AI-Powered Job Matching</div>
+                </div>
+            </div>
+            <!-- Search bar hidden since it's not functional yet -->
+            <!-- <div class="hidden md:flex items-center gap-2">
+                <div class="relative">
+                    <input id="globalSearch" placeholder="Search resumes & jobs..." 
+                           class="w-80 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900">
+                </div>
+            </div> -->
+        </div>
+    </header>
+
+    {% block content %}{% endblock %}
+
+    <!-- Process Status Modal -->
+    <div id="processModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/30" onclick="closeProcessModal()"></div>
+        <div class="relative z-10 w-full max-w-3xl bg-white rounded-2xl shadow-xl border">
+            <div class="p-4 border-b flex items-center justify-between">
+                <div>
+                    <div class="text-sm font-semibold">Process Status</div>
+                    <div class="text-xs text-gray-500" id="processTitle">Running...</div>
+                </div>
+                <button onclick="closeProcessModal()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-4 max-h-96 overflow-y-auto">
+                <div id="processOutput" class="font-mono text-xs bg-gray-900 text-green-400 p-4 rounded-lg whitespace-pre-wrap"></div>
+            </div>
+            <div class="p-4 border-t flex items-center justify-end gap-2">
+                <button id="stopProcessBtn" class="px-3 py-2 text-sm rounded-xl border border-red-500 text-red-500 hover:bg-red-50">Stop Process</button>
+                <button onclick="closeProcessModal()" class="px-3 py-2 text-sm rounded-xl border border-gray-200 hover:bg-gray-50">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

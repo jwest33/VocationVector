@@ -1,0 +1,67 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vocationvector-app
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+      - ./config:/app/config
+    environment:
+      - APP_ENVIRONMENT=${APP_ENVIRONMENT:-production}
+      - LLM_SERVER_HOST=llm-server
+      - LLM_SERVER_PORT=8000
+      - LLM_MODE=remote  # Tell app to use remote server
+      - OPENAI_BASE_URL=http://llm-server:8000/v1  # For OpenAI client
+      - OPENAI_API_KEY=dummy-key
+      - LLM_MODEL=qwen3-4b-instruct-2507-f16
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - PYTHONUNBUFFERED=1
+      - LLM_STARTUP_TIMEOUT=300  # Increase timeout to 5 minutes for model loading
+    depends_on:
+      - llm-server
+    networks:
+      - vocationvector-net
+    restart: unless-stopped
+
+  llm-server:
+    image: ghcr.io/ggerganov/llama.cpp:server-cuda
+    container_name: vocationvector-llm
+    ports:
+      - "8000:8000"
+    volumes:
+      - C:/models/Qwen3-4B-Instruct-2507:/models:ro
+    command: [
+      "--model", "/models/Qwen3-4B-Instruct-2507-F16.gguf",
+      "--host", "0.0.0.0",
+      "--port", "8000",
+      "--ctx-size", "${LLM_CTX_SIZE:-32768}",
+      "--threads", "${LLM_N_THREADS:-4}",
+      "--n-gpu-layers", "${LLM_N_GPU_LAYERS:-99}",  # Offload all layers to GPU
+      "--alias", "qwen3-4b-instruct-2507-f16"
+    ]
+    networks:
+      - vocationvector-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 300s
+    deploy:
+      resources:
+        limits:
+          memory: ${LLM_MEMORY_LIMIT:-10G}
+        reservations:
+          memory: ${LLM_MEMORY_RESERVATION:-8G}
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+networks:
+  vocationvector-net:
+    driver: bridge
